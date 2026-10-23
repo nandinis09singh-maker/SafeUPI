@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Production build outputs
+dist/
+frontend/dist/
+target/
+backend/target/
+
+# Local databases & runtime logs
+backend/data/
+*.db
+*.mv.db
+*.trace.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.iml
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Temporary archives & staging duplicates
+*.zip
+safe-upi/
+SafeUPI/
+safeupi_staging/
