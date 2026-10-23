@@ -23,28 +23,74 @@ async function handleResponse(res) {
 export const api = {
   // Auth
   async register(data) {
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      console.warn('Backend register endpoint unavailable, using local session fallback:', err);
+      const mockUser = {
+        id: Date.now(),
+        username: data.username,
+        fullName: data.fullName || data.username,
+        email: data.email,
+      };
+      const mockToken = 'safeupi_local_session_' + Date.now();
+      localStorage.setItem('safeupi_current_user', JSON.stringify(mockUser));
+      return {
+        token: mockToken,
+        user: mockUser,
+        message: 'Registered in local mode (Backend offline)',
+      };
+    }
   },
 
   async login(data) {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      console.warn('Backend login endpoint unavailable, using local session fallback:', err);
+      const username = data.usernameOrEmail || 'demo';
+      const mockUser = {
+        id: 1,
+        username: username,
+        fullName: username === 'demo' ? 'Demo User' : username,
+        email: username.includes('@') ? username : `${username}@safeupi.com`,
+      };
+      const mockToken = 'safeupi_local_session_' + Date.now();
+      localStorage.setItem('safeupi_current_user', JSON.stringify(mockUser));
+      return {
+        token: mockToken,
+        user: mockUser,
+        message: 'Signed in via local demo mode (Backend offline)',
+      };
+    }
   },
 
   async getMe() {
-    const res = await fetch(`${API_BASE}/auth/me`, {
-      headers: { ...getAuthHeader() },
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        headers: { ...getAuthHeader() },
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      const cached = localStorage.getItem('safeupi_current_user');
+      if (cached) return JSON.parse(cached);
+      return {
+        id: 1,
+        username: 'demo',
+        fullName: 'Demo User',
+        email: 'demo@safeupi.com',
+      };
+    }
   },
 
   // Analysis
@@ -61,7 +107,9 @@ export const api = {
       return await handleResponse(res);
     } catch (err) {
       console.warn('Backend QR API failed, using client-side fallback rule evaluator:', err);
-      return fallbackAnalyzeQr(payload);
+      const result = fallbackAnalyzeQr(payload);
+      saveLocalScan(result, payload);
+      return result;
     }
   },
 
@@ -78,7 +126,9 @@ export const api = {
       return await handleResponse(res);
     } catch (err) {
       console.warn('Backend Message API failed, using client-side fallback rule evaluator:', err);
-      return fallbackAnalyzeMessage(message, senderId);
+      const result = fallbackAnalyzeMessage(message, senderId);
+      saveLocalScan(result, message);
+      return result;
     }
   },
 
@@ -95,7 +145,9 @@ export const api = {
       return await handleResponse(res);
     } catch (err) {
       console.warn('Backend Link API failed, using client-side fallback rule evaluator:', err);
-      return fallbackAnalyzeLink(url);
+      const result = fallbackAnalyzeLink(url);
+      saveLocalScan(result, url);
+      return result;
     }
   },
 
@@ -118,32 +170,54 @@ export const api = {
       });
       return await handleResponse(res);
     } catch (err) {
+      const history = JSON.parse(localStorage.getItem('safeupi_local_history') || '[]');
+      const contacts = JSON.parse(localStorage.getItem('safeupi_local_contacts') || '[]');
+      const reports = JSON.parse(localStorage.getItem('safeupi_local_reports') || '[]');
+      const high = history.filter(h => h.riskLevel === 'HIGH').length;
+      const med = history.filter(h => h.riskLevel === 'MEDIUM').length;
+      const low = history.filter(h => h.riskLevel === 'LOW').length;
       return {
-        totalScans: 0,
-        highRiskScans: 0,
-        mediumRiskScans: 0,
-        lowRiskScans: 0,
-        totalScamReports: 0,
-        trustedContactsCount: 0,
-        scansByType: { QR: 0, MESSAGE: 0, LINK: 0 },
+        totalScans: history.length,
+        highRiskScans: high,
+        mediumRiskScans: med,
+        lowRiskScans: low,
+        totalScamReports: reports.length + 3,
+        trustedContactsCount: contacts.length,
+        scansByType: {
+          QR: history.filter(h => h.scanType === 'QR').length,
+          MESSAGE: history.filter(h => h.scanType === 'MESSAGE').length,
+          LINK: history.filter(h => h.scanType === 'LINK').length,
+        },
       };
     }
   },
 
   async deleteHistory(id) {
-    const res = await fetch(`${API_BASE}/history/${id}`, {
-      method: 'DELETE',
-      headers: { ...getAuthHeader() },
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/history/${id}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeader() },
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      const list = JSON.parse(localStorage.getItem('safeupi_local_history') || '[]');
+      const updated = list.filter(item => item.id !== id);
+      localStorage.setItem('safeupi_local_history', JSON.stringify(updated));
+      return { success: true };
+    }
   },
 
   async clearHistory() {
-    const res = await fetch(`${API_BASE}/history/clear`, {
-      method: 'POST',
-      headers: { ...getAuthHeader() },
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/history/clear`, {
+        method: 'POST',
+        headers: { ...getAuthHeader() },
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      localStorage.removeItem('safeupi_local_history');
+      return { success: true };
+    }
   },
 
   // Trusted Contacts
@@ -159,36 +233,73 @@ export const api = {
   },
 
   async addContact(data) {
-    const res = await fetch(`${API_BASE}/contacts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(data),
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/contacts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      const list = JSON.parse(localStorage.getItem('safeupi_local_contacts') || '[]');
+      const newContact = {
+        id: Date.now(),
+        contactName: data.contactName,
+        phoneNumber: data.phoneNumber,
+        relation: data.relation || 'Family',
+        email: data.email || '',
+        createdAt: new Date().toISOString(),
+      };
+      list.unshift(newContact);
+      localStorage.setItem('safeupi_local_contacts', JSON.stringify(list));
+      return newContact;
+    }
   },
 
   async deleteContact(id) {
-    const res = await fetch(`${API_BASE}/contacts/${id}`, {
-      method: 'DELETE',
-      headers: { ...getAuthHeader() },
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeader() },
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      const list = JSON.parse(localStorage.getItem('safeupi_local_contacts') || '[]');
+      const updated = list.filter(c => c.id !== id);
+      localStorage.setItem('safeupi_local_contacts', JSON.stringify(updated));
+      return { success: true };
+    }
   },
 
   // Scam Reports
   async submitReport(data) {
-    const res = await fetch(`${API_BASE}/reports`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-      body: JSON.stringify(data),
-    });
-    return handleResponse(res);
+    try {
+      const res = await fetch(`${API_BASE}/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader(),
+        },
+        body: JSON.stringify(data),
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      const list = JSON.parse(localStorage.getItem('safeupi_local_reports') || '[]');
+      const newReport = {
+        id: Date.now(),
+        reportType: data.reportType,
+        targetValue: data.targetValue,
+        description: data.description,
+        reporterContact: data.reporterContact || '',
+        reportedAt: new Date().toISOString(),
+      };
+      list.unshift(newReport);
+      localStorage.setItem('safeupi_local_reports', JSON.stringify(list));
+      return newReport;
+    }
   },
 
   async getRecentReports() {
@@ -196,10 +307,39 @@ export const api = {
       const res = await fetch(`${API_BASE}/reports/recent`);
       return await handleResponse(res);
     } catch (err) {
-      return [];
+      const localReports = JSON.parse(localStorage.getItem('safeupi_local_reports') || '[]');
+      const defaultPresets = [
+        { id: 'p1', reportType: 'UPI_ID', targetValue: 'electricity-bill-officer@paytm', description: 'Pretended to be electricity discom cut-off extortion', reportedAt: new Date(Date.now() - 3600000).toISOString() },
+        { id: 'p2', reportType: 'LINK', targetValue: 'https://sbi-pan-reward-update.top', description: 'Phishing APK download link sent via SMS', reportedAt: new Date(Date.now() - 7200000).toISOString() },
+        { id: 'p3', reportType: 'UPI_ID', targetValue: 'refund-cashback-desk@okicici', description: 'Sent QR collect request pretending to refund OLX excess payment', reportedAt: new Date(Date.now() - 14400000).toISOString() }
+      ];
+      return [...localReports, ...defaultPresets];
     }
   },
 };
+
+function saveLocalScan(res, rawInput) {
+  try {
+    const list = JSON.parse(localStorage.getItem('safeupi_local_history') || '[]');
+    const record = {
+      id: Date.now(),
+      scanType: res.scanType,
+      rawInput: rawInput || res.payeeVpa || res.targetUrl || '',
+      riskLevel: res.riskLevel,
+      riskScore: res.riskScore,
+      payeeVpa: res.payeeVpa,
+      payeeName: res.payeeName,
+      amount: res.amount,
+      targetUrl: res.targetUrl,
+      explanation: res.explanation,
+      indicatorsJson: JSON.stringify(res.indicators || []),
+      recommendationsJson: JSON.stringify(res.recommendations || []),
+      createdAt: new Date().toISOString(),
+    };
+    list.unshift(record);
+    localStorage.setItem('safeupi_local_history', JSON.stringify(list));
+  } catch (e) {}
+}
 
 // Client-side fallback rule evaluator (matches the Java rules engine logic exactly)
 function fallbackAnalyzeQr(payload) {
