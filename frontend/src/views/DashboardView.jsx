@@ -58,15 +58,15 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.25rem' }}>
           <div>
             <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-              Security Command Center
+              {t('dashboardTitle')}
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-              Continuous real-time protection against UPI collect scams, phishing links, and social engineering.
+              {t('dashboardSubtitle')}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(5, 150, 105, 0.1)', border: '1px solid rgba(5, 150, 105, 0.25)', padding: '0.4rem 0.85rem', borderRadius: '9999px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669', boxShadow: '0 0 8px #059669' }} />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#059669' }}>SafeUPI AI Engine Online</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#059669' }}>{t('aiEngineOnline')}</span>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
               <TrendingUp size={24} color="var(--primary-bright)" />
             </div>
             <div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Scans</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('statTotalScans')}</p>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)' }}>{stats.totalScans || 0}</h2>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
               <ShieldAlert size={24} color="var(--risk-high)" />
             </div>
             <div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>High Risk Detected</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('statHighRisk')}</p>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--risk-high)' }}>{stats.highRiskScans || 0}</h2>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
               <AlertTriangle size={24} color="var(--risk-med)" />
             </div>
             <div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Suspicious Cautions</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('statMediumRisk')}</p>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--risk-med)' }}>{stats.mediumRiskScans || 0}</h2>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
               <ShieldCheck size={24} color="var(--risk-low)" />
             </div>
             <div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verified Safe</p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('statSafe')}</p>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--risk-low)' }}>{stats.lowRiskScans || 0}</h2>
             </div>
           </div>
@@ -125,7 +125,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
       {/* Main 3 Action Modalities */}
       <div>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '1rem' }}>
-          Scan & Analyze Instruments
+          {t('instrumentsTitle')}
         </h3>
         <div style={{
           display: 'grid',
@@ -149,14 +149,14 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
                 <QrCode size={24} color="var(--primary-bright)" />
               </div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                {t('scanQrBtn')}
+                {t('instrumentQrTitle')}
               </h4>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                Scan real QR codes via camera or image upload. Extracts Payee VPA, name, amount & detects deceptive "Scan to receive" traps.
+                {t('instrumentQrDesc')}
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-bright)', fontWeight: 700, fontSize: '0.88rem' }}>
-              <span>Launch Camera Scanner</span>
+              <span>{t('scanQrBtn')}</span>
               <ArrowRight size={16} />
             </div>
           </div>
@@ -178,14 +178,14 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
                 <MessageSquareText size={24} color="var(--accent-cyan)" />
               </div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                {t('checkMsgBtn')}
+                {t('instrumentMsgTitle')}
               </h4>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                Paste suspicious SMS, WhatsApp notices, or fake electricity disconnection alerts. Identifies OTP theft, fake customer care & UPI PIN demands.
+                {t('instrumentMsgDesc')}
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-cyan)', fontWeight: 700, fontSize: '0.88rem' }}>
-              <span>Analyze Message Text</span>
+              <span>{t('checkMsgBtn')}</span>
               <ArrowRight size={16} />
             </div>
           </div>
@@ -207,14 +207,14 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
                 <Link2 size={24} color="#9333EA" />
               </div>
               <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-                {t('checkLinkBtn')}
+                {t('instrumentLinkTitle')}
               </h4>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
-                Inspect URLs for spoofed banking hostnames (e.g. SBI/HDFC typosquatting), raw IP addresses, and direct APK download links safely without opening.
+                {t('instrumentLinkDesc')}
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#9333EA', fontWeight: 700, fontSize: '0.88rem' }}>
-              <span>Inspect Web URL</span>
+              <span>{t('checkLinkBtn')}</span>
               <ArrowRight size={16} />
             </div>
           </div>
@@ -226,10 +226,10 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Recent Security Analyses
+              {t('recentActivityTitle')}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              History of scans evaluated by SafeUPI rules engine
+              {t('historySubtitle')}
             </p>
           </div>
           <button
@@ -237,7 +237,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
             className="btn-secondary"
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
-            <span>View Full History</span>
+            <span>{t('viewAllHistory')}</span>
             <ArrowRight size={16} />
           </button>
         </div>
@@ -245,13 +245,13 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
         {recentHistory.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
             <Clock size={36} style={{ margin: '0 auto 0.75rem auto', opacity: 0.5 }} />
-            <p style={{ fontWeight: 600 }}>No scans recorded yet</p>
+            <p style={{ fontWeight: 600 }}>{t('noRecentScans')}</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: '400px', margin: '0.25rem auto 1rem auto' }}>
-              Perform your first QR scan or message check above to see risk analysis records here.
+              {t('instrumentQrDesc')}
             </p>
             <button onClick={() => setView('qr')} className="btn-primary" style={{ fontSize: '0.85rem' }}>
               <QrCode size={16} />
-              <span>Scan QR Code Now</span>
+              <span>{t('scanQrBtn')}</span>
             </button>
           </div>
         ) : (
@@ -259,12 +259,12 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Type</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Payload / Target</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Risk Level</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Score</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Date</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Action</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>{t('tableType')}</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>{t('tableTarget')}</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>{t('tableRiskLevel')}</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>{t('riskScoreLabel')}</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>{t('tableDate')}</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>{t('tableAction')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -322,7 +322,7 @@ export default function DashboardView({ setView, onSelectHistoryItem }) {
                         }}
                       >
                         <Eye size={14} />
-                        <span>Inspect</span>
+                        <span>{t('inspectBtn')}</span>
                       </button>
                     </td>
                   </tr>

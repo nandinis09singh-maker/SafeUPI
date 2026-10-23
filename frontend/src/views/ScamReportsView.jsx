@@ -71,10 +71,10 @@ export default function ScamReportsView({ initialReportData }) {
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-          Community Scam Reporting Registry
+          {t('reportsTitle', 'Community Scam Reporting Registry')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Report fraudulent UPI handles, fake refund QR codes, phishing websites, and extortion messages. Reports instantly empower all users.
+          {t('reportsSubtitle', 'Report fraudulent UPI handles, fake refund QR codes, phishing websites, and extortion messages. Reports instantly empower all users.')}
         </p>
       </div>
 
@@ -84,7 +84,7 @@ export default function ScamReportsView({ initialReportData }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
             <Flag size={20} color="#EF4444" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              File a Scam Incident Report
+              {t('fileReportTitle', 'File a Scam Incident Report')}
             </h3>
           </div>
 
@@ -102,23 +102,23 @@ export default function ScamReportsView({ initialReportData }) {
               gap: '0.5rem',
             }}>
               <CheckCircle size={18} />
-              <span>Report filed successfully! Added to active detection blacklist.</span>
+              <span>{t('reportSuccess', 'Report filed successfully! Added to active detection blacklist.')}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Incident Category:
+                {t('incidentCategory', 'Incident Category:')}
               </label>
               <select
                 className="form-select"
                 value={formData.reportType}
                 onChange={(e) => setFormData({ ...formData, reportType: e.target.value })}
               >
-                <option value="UPI_ID">Fraudulent UPI ID / VPA Handle</option>
-                <option value="LINK">Phishing Website / Fraud URL</option>
-                <option value="MESSAGE">Extortion SMS / WhatsApp Message</option>
+                <option value="UPI_ID">{t('catUpi', 'Fraudulent UPI ID / VPA Handle')}</option>
+                <option value="LINK">{t('catLink', 'Phishing Website / Fraud URL')}</option>
+                <option value="MESSAGE">{t('catMsg', 'Extortion SMS / WhatsApp Message')}</option>
               </select>
             </div>
 
@@ -148,7 +148,7 @@ export default function ScamReportsView({ initialReportData }) {
 
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Detailed Description of Scam Attempt:
+                {t('reportDescLabel', 'Detailed Description of Scam Attempt:')}
               </label>
               <textarea
                 className="form-textarea"
@@ -162,7 +162,7 @@ export default function ScamReportsView({ initialReportData }) {
 
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Your Contact (Optional, for cybercrime validation):
+                {t('reportContactLabel', 'Your Contact (Optional, for cybercrime validation):')}
               </label>
               <input
                 type="text"
@@ -182,12 +182,12 @@ export default function ScamReportsView({ initialReportData }) {
               {loading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin" />
-                  <span>Logging Report to MySQL...</span>
+                  <span>{t('submittingReport', 'Logging Report to MySQL...')}</span>
                 </>
               ) : (
                 <>
                   <Send size={18} />
-                  <span>Submit Scam Report to Database</span>
+                  <span>{t('submitReportBtn', 'Submit Scam Report to Database')}</span>
                 </>
               )}
             </button>
@@ -200,7 +200,7 @@ export default function ScamReportsView({ initialReportData }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <ShieldAlert size={20} color="#00E5FF" />
               <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                Recent Community Alerts
+                {t('recentCommunityAlerts', 'Recent Community Threat Alerts')}
               </h3>
             </div>
             <button
@@ -213,18 +213,18 @@ export default function ScamReportsView({ initialReportData }) {
           </div>
 
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Flagged handles actively blocked across all SafeUPI user scans:
+            {t('communityFeedSub', 'Flagged handles actively blocked across all SafeUPI user scans:')}
           </p>
 
           {fetchingRecent ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
               <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 0.5rem auto' }} />
-              <p style={{ fontSize: '0.85rem' }}>Updating scam feed...</p>
+              <p style={{ fontSize: '0.85rem' }}>{t('updatingFeed', 'Updating scam feed...')}</p>
             </div>
           ) : recentReports.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
               <Clock size={32} style={{ margin: '0 auto 0.5rem auto', opacity: 0.5 }} />
-              <p style={{ fontSize: '0.85rem' }}>No community reports yet. Be the first to report!</p>
+              <p style={{ fontSize: '0.85rem' }}>{t('noCommunityReports', 'No community reports yet. Be the first to report!')}</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '520px', overflowY: 'auto', paddingRight: '0.25rem' }}>

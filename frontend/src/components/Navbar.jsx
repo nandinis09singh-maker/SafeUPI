@@ -74,11 +74,11 @@ export default function Navbar({ onOpenAuth, onToggleSidebar }) {
                 borderRadius: '6px',
                 border: '1px solid rgba(37, 99, 235, 0.25)',
               }}>
-                FINTECH SECURITY
+                {t('fintechSecurity')}
               </span>
             </div>
             <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0 }}>
-              AI-Powered UPI Scam & Fraud Defense
+              {t('appSubtitle')}
             </p>
           </div>
         </div>
@@ -105,12 +105,12 @@ export default function Navbar({ onOpenAuth, onToggleSidebar }) {
           {theme === 'light' ? (
             <>
               <Moon size={15} color="#475569" />
-              <span style={{ color: 'var(--text-muted)' }}>Dark</span>
+              <span style={{ color: 'var(--text-muted)' }}>{t('themeDark')}</span>
             </>
           ) : (
             <>
               <Sun size={15} color="#F59E0B" />
-              <span style={{ color: '#F8FAFC' }}>Light</span>
+              <span style={{ color: '#F8FAFC' }}>{t('themeLight')}</span>
             </>
           )}
         </button>

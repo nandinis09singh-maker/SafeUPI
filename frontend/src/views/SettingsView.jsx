@@ -33,10 +33,10 @@ export default function SettingsView({ onOpenAuth }) {
     <div style={{ maxWidth: '850px', margin: '0 auto' }}>
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-          Application Settings & Profile
+          {t('settingsTitle')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Configure speech language, view your secure credentials, and manage stored privacy data.
+          {t('settingsSubtitle')}
         </p>
       </div>
 
@@ -46,7 +46,7 @@ export default function SettingsView({ onOpenAuth }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
             <User size={20} color="#3B82F6" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              User Profile
+              {t('userProfile')}
             </h3>
           </div>
 
@@ -107,12 +107,12 @@ export default function SettingsView({ onOpenAuth }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
             <Globe size={20} color="#00E5FF" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Language & Voice Settings
+              {t('langAndVoice')}
             </h3>
           </div>
 
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            Select your preferred display language and voice speech warnings:
+            {t('selectLang')}
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -150,17 +150,17 @@ export default function SettingsView({ onOpenAuth }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.25rem' }}>
             <Database size={20} color="#A855F7" />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              Data & Privacy Controls
+              {t('purgeHistory')}
             </h3>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h4 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
-                Purge All Scan History
+                {t('purgeHistory')}
               </h4>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Permanently erase all previously analyzed QR codes, message snippets, and URLs from your history table.
+                {t('purgeDesc')}
               </p>
             </div>
             <button
@@ -169,7 +169,7 @@ export default function SettingsView({ onOpenAuth }) {
               style={{ fontSize: '0.82rem', padding: '0.5rem 1rem' }}
             >
               <Trash2 size={15} />
-              <span>Clear History Data</span>
+              <span>{t('clearHistoryBtn')}</span>
             </button>
           </div>
         </div>

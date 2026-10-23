@@ -114,10 +114,10 @@ export default function AuthModal({ isOpen, onClose }) {
             <ShieldCheck size={28} color="#FFF" />
           </div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            {tab === 'login' ? 'Sign In to SafeUPI' : 'Create Free Account'}
+            {tab === 'login' ? t('authTitleLogin', 'Sign In to SafeUPI') : t('authTitleRegister', 'Create Free Account')}
           </h2>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Access cloud scan history, trusted contacts & fraud protection
+            {t('authSubtitle', 'Access cloud scan history, trusted contacts & fraud protection')}
           </p>
         </div>
 
@@ -142,7 +142,7 @@ export default function AuthModal({ isOpen, onClose }) {
               background: tab === 'login' ? 'var(--primary)' : 'transparent',
             }}
           >
-            Sign In
+            {t('tabSignIn', 'Sign In')}
           </button>
           <button
             onClick={() => { setTab('register'); setError(null); }}
@@ -156,7 +156,7 @@ export default function AuthModal({ isOpen, onClose }) {
               background: tab === 'register' ? 'var(--primary)' : 'transparent',
             }}
           >
-            Register
+            {t('tabRegister', 'Register')}
           </button>
         </div>
 
@@ -179,7 +179,7 @@ export default function AuthModal({ isOpen, onClose }) {
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Username or Email:
+                {t('usernameOrEmail', 'Username or Email:')}
               </label>
               <input
                 type="text"
@@ -193,7 +193,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                Password:
+                {t('passwordLabel', 'Password:')}
               </label>
               <input
                 type="password"
@@ -212,7 +212,7 @@ export default function AuthModal({ isOpen, onClose }) {
               style={{ width: '100%', padding: '0.75rem', marginBottom: '1rem' }}
             >
               <LogIn size={16} />
-              <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+              <span>{loading ? t('authenticating', 'Authenticating...') : t('login', 'Sign In')}</span>
             </button>
 
             {/* Quick Demo Pre-fill */}
@@ -223,7 +223,7 @@ export default function AuthModal({ isOpen, onClose }) {
               style={{ width: '100%', padding: '0.65rem', fontSize: '0.82rem' }}
             >
               <Sparkles size={14} color="#00E5FF" />
-              <span>Use Pre-loaded Demo Account (demo / SafeUPI@123)</span>
+              <span>{t('useDemoAccount', 'Use Pre-loaded Demo Account (demo / SafeUPI@123)')}</span>
             </button>
           </form>
         )}
@@ -233,7 +233,7 @@ export default function AuthModal({ isOpen, onClose }) {
           <form onSubmit={handleRegister}>
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                Full Name:
+                {t('fullNameLabel', 'Full Name:')}
               </label>
               <input
                 type="text"
@@ -247,7 +247,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                Username:
+                {t('usernameLabel', 'Username:')}
               </label>
               <input
                 type="text"
@@ -261,7 +261,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
             <div style={{ marginBottom: '0.85rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                Email Address:
+                {t('emailLabel', 'Email Address:')}
               </label>
               <input
                 type="email"
@@ -275,7 +275,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-                Password (min 6 characters):
+                {t('passwordRegLabel', 'Password (min 6 characters):')}
               </label>
               <input
                 type="password"
@@ -294,7 +294,7 @@ export default function AuthModal({ isOpen, onClose }) {
               style={{ width: '100%', padding: '0.75rem' }}
             >
               <UserPlus size={16} />
-              <span>{loading ? 'Registering...' : 'Create Account'}</span>
+              <span>{loading ? t('registering', 'Registering...') : t('register', 'Create Account')}</span>
             </button>
           </form>
         )}

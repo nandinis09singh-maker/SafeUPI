@@ -61,25 +61,38 @@ public class QrRuleEvaluator {
 
         String payload = rawPayload.trim();
 
-        // 1. UPI Scheme Check
+        // 1. UPI Scheme Check & Parameter Extraction
         Map<String, String> params = parseUpiUri(payload);
         result.payeeVpa = params.get("pa");
         result.payeeName = params.get("pn");
         result.amount = params.get("am");
         result.transactionNote = params.get("tn");
 
-        if (!payload.toLowerCase().startsWith("upi://pay")) {
-            // Is it a plain UPI ID?
-            if (payload.matches("^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z]{2,64}$")) {
-                result.payeeVpa = payload;
-                result.indicators.add(new IndicatorDetail("RAW_VPA", "Direct VPA Handle",
-                        "QR contains a plain UPI ID without standard payment metadata.", "INFO", 5));
-                score += 5;
-            } else {
-                result.indicators.add(new IndicatorDetail("NON_UPI_QR", "Non-Standard UPI Scheme",
-                        "This QR code does not use the official NPCI UPI protocol format (upi://pay).", "HIGH", 45));
-                score += 45;
-            }
+        String lowerPayload = payload.toLowerCase();
+        boolean isStandardUpi = lowerPayload.startsWith("upi://pay") || lowerPayload.contains("upi://pay");
+        boolean isBharatQr = payload.startsWith("000201");
+        boolean isWebLink = lowerPayload.startsWith("http://") || lowerPayload.startsWith("https://");
+
+        if (isBharatQr) {
+            // BharatQR / EMVCo Standard POS Terminal format
+            parseBharatQr(payload, result);
+            result.indicators.add(new IndicatorDetail("BHARAT_QR_POS", "Official NPCI BharatQR / POS Terminal",
+                    "This QR code follows the official NPCI EMVCo merchant specification used by retail card/POS terminals.", "INFO", 0));
+        } else if (isStandardUpi) {
+            // Standard upi://pay format
+        } else if (payload.matches("^[a-zA-Z0-9.\\-_]{2,256}@[a-zA-Z0-9]{2,64}$")) {
+            result.payeeVpa = payload;
+            result.indicators.add(new IndicatorDetail("RAW_VPA", "Direct VPA Handle",
+                    "QR contains a plain UPI ID without standard payment metadata.", "INFO", 5));
+            score += 5;
+        } else if (isWebLink) {
+            result.indicators.add(new IndicatorDetail("WEB_LINK_QR", "Web URL Payment Redirect",
+                    "This QR code points to a website link (" + (payload.length() > 50 ? payload.substring(0, 50) + "..." : payload) + ") rather than a native direct UPI scheme.", "MEDIUM", 25));
+            score += 25;
+        } else {
+            result.indicators.add(new IndicatorDetail("NON_UPI_QR", "Non-Standard QR Scheme",
+                    "This QR code does not use the official NPCI UPI protocol format (upi://pay).", "HIGH", 45));
+            score += 45;
         }
 
         // 2. VPA Validation
@@ -211,13 +224,51 @@ public class QrRuleEvaluator {
                 for (String pair : pairs) {
                     String[] kv = pair.split("=", 2);
                     if (kv.length == 2) {
-                        String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8).trim();
-                        String val = URLDecoder.decode(kv[1], StandardCharsets.UTF_8).trim();
+                        String key = safeUrlDecode(kv[0]).trim().toLowerCase();
+                        String val = safeUrlDecode(kv[1]).trim();
                         params.put(key, val);
                     }
                 }
             }
         } catch (Exception ignored) {}
         return params;
+    }
+
+    private String safeUrlDecode(String s) {
+        if (s == null) return "";
+        try {
+            return URLDecoder.decode(s, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return s.replace("+", " ");
+        }
+    }
+
+    private void parseBharatQr(String payload, QrEvaluationResult result) {
+        try {
+            int i = 0;
+            while (i + 4 <= payload.length()) {
+                String tag = payload.substring(i, i + 2);
+                int length = Integer.parseInt(payload.substring(i + 2, i + 4));
+                i += 4;
+                if (i + length > payload.length()) break;
+                String val = payload.substring(i, i + length);
+                i += length;
+
+                if (tag.equals("59") && (result.payeeName == null || result.payeeName.isEmpty())) {
+                    result.payeeName = val;
+                } else if (tag.equals("54") && (result.amount == null || result.amount.isEmpty())) {
+                    result.amount = val;
+                } else if ((tag.equals("26") || tag.equals("27")) && (result.payeeVpa == null || result.payeeVpa.isEmpty())) {
+                    // Extract VPA from EMVCo Sub-template if present
+                    int atIdx = val.indexOf('@');
+                    if (atIdx != -1) {
+                        int start = Math.max(0, val.lastIndexOf("01", atIdx) + 2);
+                        String sub = val.substring(start);
+                        int end = sub.indexOf("02");
+                        result.payeeVpa = end != -1 ? sub.substring(0, end) : sub;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
     }
 }

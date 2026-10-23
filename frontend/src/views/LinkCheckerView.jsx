@@ -71,10 +71,10 @@ export default function LinkCheckerView({ onReportScam }) {
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-          Malicious Link & Phishing Inspector
+          {t('linkTitle')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Evaluate suspicious URLs safely without opening them. Unmasks brand spoofing, malicious APK downloads, and cheap phishing domains.
+          {t('linkSubtitle')}
         </p>
       </div>
 
@@ -82,14 +82,14 @@ export default function LinkCheckerView({ onReportScam }) {
         <form onSubmit={handleAnalyze}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-              Website URL to inspect:
+              {t('linkInputLabel')}
             </label>
             <div style={{ position: 'relative' }}>
               <input
                 type="text"
                 className="form-input"
                 style={{ paddingLeft: '2.5rem' }}
-                placeholder="e.g. https://sbi-kyc-pan-update.top"
+                placeholder={t('linkPlaceholder')}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 required
@@ -111,12 +111,12 @@ export default function LinkCheckerView({ onReportScam }) {
             {loading ? (
               <>
                 <RefreshCw size={18} className="animate-spin" />
-                <span>Deconstructing Domain Structure...</span>
+                <span>{t('analyzingHeuristics')}</span>
               </>
             ) : (
               <>
                 <ShieldAlert size={18} />
-                <span>Inspect URL Safely</span>
+                <span>{t('analyzeLinkBtn')}</span>
               </>
             )}
           </button>
@@ -125,7 +125,7 @@ export default function LinkCheckerView({ onReportScam }) {
         {/* Quick Test Presets */}
         <div style={{ marginTop: '1.75rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
-            Known Test Cases (Click to Test)
+            {t('linkScenariosTitle')}
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem' }}>
             {presets.map((p, i) => (

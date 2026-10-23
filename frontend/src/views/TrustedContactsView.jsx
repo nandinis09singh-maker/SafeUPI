@@ -97,10 +97,10 @@ export default function TrustedContactsView({ onOpenAuth }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            Trusted Family & Emergency Contacts
+            {t('contactsTitle', 'Trusted Family & Emergency Contacts')}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-            Protect your parents, elders, and loved ones by instantly broadcasting verified scam warnings to their phones.
+            {t('contactsSubtitle', 'Protect your parents, elders, and loved ones by instantly broadcasting verified scam warnings to their phones.')}
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
           className="btn-primary"
         >
           <UserPlus size={18} />
-          <span>Add Trusted Contact</span>
+          <span>{t('addContactBtn', 'Add Trusted Contact')}</span>
         </button>
       </div>
 
@@ -130,14 +130,14 @@ export default function TrustedContactsView({ onOpenAuth }) {
         }}>
           <div>
             <h4 style={{ color: 'var(--primary-bright)', fontWeight: 700, fontSize: '1rem', marginBottom: '0.2rem' }}>
-              Sign In to Sync Trusted Contacts across Devices
+              {t('signInToSyncContacts', 'Sign In to Sync Trusted Contacts across Devices')}
             </h4>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              Create an account or sign in with MySQL backend to store persistent family emergency contacts.
+              {t('signInToSyncDesc', 'Create an account or sign in with MySQL backend to store persistent family emergency contacts.')}
             </p>
           </div>
           <button onClick={onOpenAuth} className="btn-primary" style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}>
-            Sign In Now
+            {t('signInNow', 'Sign In Now')}
           </button>
         </div>
       )}
@@ -146,16 +146,16 @@ export default function TrustedContactsView({ onOpenAuth }) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <RefreshCw size={36} color="var(--primary-bright)" className="animate-spin" style={{ margin: '0 auto 1rem auto' }} />
-          <p>Retrieving trusted contacts...</p>
+          <p>{t('retrievingContacts', 'Retrieving trusted contacts...')}</p>
         </div>
       ) : contacts.length === 0 ? (
         <div className="safe-card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <Users size={44} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
           <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-            No Trusted Contacts Configured
+            {t('noContactsTitle', 'No Trusted Contacts Configured')}
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: '420px', margin: '0 auto 1.5rem auto' }}>
-            Add your parents, spouse, or close relatives so you can alert them with 1-click whenever a high risk scam is detected.
+            {t('noContactsDesc', 'Add your parents, spouse, or close relatives so you can alert them with 1-click whenever a high risk scam is detected.')}
           </p>
           <button
             onClick={() => {
@@ -166,7 +166,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
             style={{ fontSize: '0.85rem' }}
           >
             <UserPlus size={16} />
-            <span>Add First Contact</span>
+            <span>{t('addFirstContact', 'Add First Contact')}</span>
           </button>
         </div>
       ) : (
@@ -227,7 +227,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
                   title="Send emergency fraud warning"
                 >
                   {sharedId === contact.id ? <Check size={14} /> : <Share2 size={14} />}
-                  <span>{sharedId === contact.id ? 'Sent Alert!' : 'Broadcast Alert'}</span>
+                  <span>{sharedId === contact.id ? t('sentAlert', 'Sent Alert!') : t('broadcastWarning', 'Broadcast Alert')}</span>
                 </button>
 
                 <button
@@ -239,7 +239,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--risk-high)')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-dim)')}
-                  title="Delete Contact"
+                  title={t('deleteBtn', 'Delete Contact')}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -271,16 +271,16 @@ export default function TrustedContactsView({ onOpenAuth }) {
             style={{ maxWidth: '460px', width: '100%' }}
           >
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-              Add Trusted Contact
+              {t('addContactBtn', 'Add Trusted Contact')}
             </h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Save a contact to broadcast fraud warnings with one click.
+              {t('contactsSubtitle', 'Save a contact to broadcast fraud warnings with one click.')}
             </p>
 
             <form onSubmit={handleAddContact}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                  Full Name:
+                  {t('fullNameLabel', 'Full Name:')}
                 </label>
                 <input
                   type="text"
@@ -294,7 +294,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                  Mobile / WhatsApp Phone Number:
+                  {t('contactPhone', 'Mobile / WhatsApp Phone Number:')}
                 </label>
                 <input
                   type="tel"
@@ -308,7 +308,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                  Relationship:
+                  {t('contactRelation', 'Relationship:')}
                 </label>
                 <select
                   className="form-select"
@@ -326,7 +326,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                  Email Address (Optional):
+                  {t('emailOptional', 'Email Address (Optional):')}
                 </label>
                 <input
                   type="email"
@@ -344,7 +344,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
                   className="btn-secondary"
                   style={{ padding: '0.65rem 1.25rem' }}
                 >
-                  Cancel
+                  {t('cancelBtn', 'Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -352,7 +352,7 @@ export default function TrustedContactsView({ onOpenAuth }) {
                   disabled={submitting}
                   style={{ padding: '0.65rem 1.5rem' }}
                 >
-                  {submitting ? 'Saving...' : 'Save Contact'}
+                  {submitting ? t('savingContact', 'Saving...') : t('saveContactBtn', 'Save Contact')}
                 </button>
               </div>
             </form>

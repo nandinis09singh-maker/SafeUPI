@@ -141,7 +141,7 @@ export default function Sidebar({ currentView, setView, isOpen, onClose }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#FCA5A5', marginBottom: '0.4rem' }}>
             <PhoneCall size={16} />
-            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>National Cyber Helpline</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{t('helplineTitle')}</span>
           </div>
           <p style={{ fontSize: '0.74rem', color: '#CBD5E1', marginBottom: '0.75rem', lineHeight: 1.4 }}>
             Victim of financial fraud? Report within 2 hours to freeze stolen funds:
@@ -164,7 +164,7 @@ export default function Sidebar({ currentView, setView, isOpen, onClose }) {
             }}
           >
             <PhoneCall size={14} />
-            Dial 1930 Helpline
+            {t('helplineSub')}
           </a>
         </div>
       </aside>

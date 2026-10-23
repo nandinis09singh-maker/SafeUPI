@@ -114,10 +114,10 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.2rem' }}>
               <span className={`badge ${theme.badgeClass}`}>
-                {result.riskLevel} RISK
+                {result.riskLevel === 'HIGH' ? t('riskHigh') : result.riskLevel === 'MEDIUM' ? t('riskMedium') : t('riskLow')}
               </span>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Scan Type: <strong>{result.scanType}</strong>
+                {t('tableType')}: <strong>{result.scanType}</strong>
               </span>
             </div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>
@@ -138,7 +138,7 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
         }}>
           <div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Rule Weight Score
+              {t('riskScoreLabel')}
             </div>
             <div style={{ fontSize: '1.5rem', fontWeight: 800, color: theme.color, lineHeight: 1 }}>
               {result.riskScore}<span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/100</span>
@@ -173,25 +173,25 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
           }}>
             {result.payeeVpa && (
               <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Recipient UPI ID (VPA)</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('payeeVpaLabel')}</span>
                 <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)', wordBreak: 'break-all' }}>{result.payeeVpa}</p>
               </div>
             )}
             {result.payeeName && (
               <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Payee Name</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('payeeNameLabel')}</span>
                 <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-main)' }}>{result.payeeName}</p>
               </div>
             )}
             {result.amount && (
               <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Requested Amount</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('amountLabel')}</span>
                 <p style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--primary)' }}>₹{result.amount}</p>
               </div>
             )}
             {result.targetUrl && (
               <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Target URL</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('targetUrlLabel')}</span>
                 <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-bright)', wordBreak: 'break-all' }}>{result.targetUrl}</p>
               </div>
             )}
@@ -201,7 +201,7 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
         {/* Explanation */}
         <div style={{ marginBottom: '1.5rem' }}>
           <h4 style={{ fontSize: '0.82rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.4rem', fontWeight: 700 }}>
-            Analysis Verdict
+            {t('explanation')}
           </h4>
           <p style={{ fontSize: '0.98rem', color: 'var(--text-main)', lineHeight: 1.6 }}>
             {result.explanation}
@@ -212,7 +212,7 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
         {result.indicators && result.indicators.length > 0 && (
           <div style={{ marginBottom: '1.5rem' }}>
             <h4 style={{ fontSize: '0.82rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.65rem', fontWeight: 700 }}>
-              Detected Risk Indicators ({result.indicators.length})
+              {t('detectedIndicators')} ({result.indicators.length})
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {result.indicators.map((ind, i) => (
@@ -257,7 +257,7 @@ export default function RiskCard({ result, onReportScam, onShareWithContact }) {
         {result.recommendations && result.recommendations.length > 0 && (
           <div style={{ marginBottom: '1.75rem' }}>
             <h4 style={{ fontSize: '0.82rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.65rem', fontWeight: 700 }}>
-              Recommended Safety Actions
+              {t('recommendations')}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {result.recommendations.map((rec, i) => (

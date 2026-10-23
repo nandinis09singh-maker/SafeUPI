@@ -89,10 +89,10 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            Analysis History & Audit Log
+            {t('historyTitle', 'Analysis History & Audit Log')}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-            Permanent record of all QR codes, text messages, and links evaluated in your account.
+            {t('historySubtitle', 'Permanent record of all QR codes, text messages, and links evaluated in your account.')}
           </p>
         </div>
 
@@ -103,7 +103,7 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
             style={{ fontSize: '0.85rem', padding: '0.5rem 1rem' }}
           >
             <Trash2 size={16} />
-            <span>Clear All History</span>
+            <span>{t('clearHistoryBtn', 'Clear All History')}</span>
           </button>
         )}
       </div>
@@ -117,7 +117,7 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
               type="text"
               className="form-input"
               style={{ paddingLeft: '2.5rem', paddingBottom: '0.6rem', paddingTop: '0.6rem' }}
-              placeholder="Search by VPA, payee, or keyword..."
+              placeholder={t('searchPlaceholder', 'Search by VPA, payee, or keyword...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -127,33 +127,33 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
             {/* Filter by Type */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Type:</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('tableType', 'Type')}:</span>
               <select
                 className="form-select"
                 style={{ padding: '0.5rem 0.8rem', width: 'auto', fontSize: '0.85rem' }}
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
               >
-                <option value="ALL">All Types</option>
-                <option value="QR">QR Code</option>
-                <option value="MESSAGE">Message</option>
-                <option value="LINK">Link</option>
+                <option value="ALL">{t('filterAll', 'All Records')}</option>
+                <option value="QR">{t('filterQr', 'QR Scans')}</option>
+                <option value="MESSAGE">{t('filterMsg', 'Messages')}</option>
+                <option value="LINK">{t('filterLink', 'Links')}</option>
               </select>
             </div>
 
             {/* Filter by Risk */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Risk:</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', textTransform: 'uppercase' }}>{t('tableRiskLevel', 'Risk')}:</span>
               <select
                 className="form-select"
                 style={{ padding: '0.5rem 0.8rem', width: 'auto', fontSize: '0.85rem' }}
                 value={filterRisk}
                 onChange={(e) => setFilterRisk(e.target.value)}
               >
-                <option value="ALL">All Risks</option>
-                <option value="HIGH">High Risk</option>
-                <option value="MEDIUM">Medium Risk</option>
-                <option value="LOW">Low Risk</option>
+                <option value="ALL">{t('filterAll', 'All Risks')}</option>
+                <option value="HIGH">{t('filterHigh', 'High Risk')}</option>
+                <option value="MEDIUM">{t('statMediumRisk', 'Medium Risk')}</option>
+                <option value="LOW">{t('statSafe', 'Low Risk')}</option>
               </select>
             </div>
 
@@ -173,18 +173,18 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <RefreshCw size={36} color="var(--primary-bright)" className="animate-spin" style={{ margin: '0 auto 1rem auto' }} />
-          <p>Loading database records...</p>
+          <p>{t('loadingRecords', 'Loading database records...')}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="safe-card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
           <History size={44} style={{ margin: '0 auto 1rem auto', opacity: 0.5 }} />
           <h3 style={{ color: 'var(--text-main)', fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.4rem' }}>
-            No matching scan records found
+            {t('noMatchingRecords', 'No matching scan records found')}
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-dim)', maxWidth: '400px', margin: '0 auto' }}>
             {history.length === 0
-              ? 'You have not performed any scans yet. Run a QR scan, message analysis, or link inspection to start building your security log.'
-              : 'Try clearing your search query or changing filter parameters.'}
+              ? t('noScansDesc', 'You have not performed any scans yet. Run a QR scan, message analysis, or link inspection to start building your security log.')
+              : t('noMatchingDesc', 'Try clearing your search query or changing filter parameters.')}
           </p>
         </div>
       ) : (
@@ -193,12 +193,12 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-dim)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '1rem' }}>Type</th>
-                  <th style={{ padding: '1rem' }}>Instrument / Payload</th>
-                  <th style={{ padding: '1rem' }}>Risk Level</th>
-                  <th style={{ padding: '1rem' }}>Score</th>
-                  <th style={{ padding: '1rem' }}>Analyzed On</th>
-                  <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '1rem' }}>{t('tableType', 'Type')}</th>
+                  <th style={{ padding: '1rem' }}>{t('tableTarget', 'Instrument / Payload')}</th>
+                  <th style={{ padding: '1rem' }}>{t('tableRiskLevel', 'Risk Level')}</th>
+                  <th style={{ padding: '1rem' }}>{t('tableScore', 'Score')}</th>
+                  <th style={{ padding: '1rem' }}>{t('tableDate', 'Analyzed On')}</th>
+                  <th style={{ padding: '1rem', textAlign: 'right' }}>{t('tableAction', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,7 +269,7 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
                             style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem' }}
                           >
                             <Eye size={14} />
-                            <span>Inspect</span>
+                            <span>{t('inspectBtn', 'Inspect')}</span>
                           </button>
                           <button
                             onClick={(e) => handleDelete(item.id, e)}
@@ -280,7 +280,7 @@ export default function HistoryView({ onReportScam, selectedItemFromParent }) {
                             }}
                             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--risk-high)')}
                             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-dim)')}
-                            title="Delete"
+                            title={t('deleteBtn', 'Delete')}
                           >
                             <Trash2 size={16} />
                           </button>

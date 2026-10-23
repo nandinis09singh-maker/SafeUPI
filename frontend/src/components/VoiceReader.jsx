@@ -8,6 +8,17 @@ export default function VoiceReader({ voiceWarnings, defaultLang = 'en' }) {
   const [selectedVoiceLang, setSelectedVoiceLang] = useState(defaultLang || currentGlobalLang || 'en');
   const [supported, setSupported] = useState(true);
 
+  // Sync with global language changes (English, Hindi, Marathi)
+  useEffect(() => {
+    if (currentGlobalLang) {
+      setSelectedVoiceLang(currentGlobalLang);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsSpeaking(false);
+    }
+  }, [currentGlobalLang]);
+
   useEffect(() => {
     if (!('speechSynthesis' in window)) {
       setSupported(false);

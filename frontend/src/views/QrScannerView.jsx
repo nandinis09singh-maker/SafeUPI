@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import QRCode from 'qrcode';
 import {
   Camera,
   Upload,
@@ -10,7 +11,12 @@ import {
   Sparkles,
   CameraOff,
   SwitchCamera,
-  CheckCircle2
+  CheckCircle2,
+  Info,
+  QrCode as QrIcon,
+  Eye,
+  Sliders,
+  ExternalLink
 } from 'lucide-react';
 import { api } from '../services/api';
 import RiskCard from '../components/RiskCard';
@@ -27,123 +33,243 @@ export default function QrScannerView({ onReportScam }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [fileError, setFileError] = useState(null);
+  const [scannedRaw, setScannedRaw] = useState(null);
+  const [scanTickCount, setScanTickCount] = useState(0);
+
+  // Modal / preview for displaying generated test QR on screen
+  const [showTestQrModal, setShowTestQrModal] = useState(null);
+  const [presetQrImages, setPresetQrImages] = useState({});
 
   const scannerRef = useRef(null);
   const qrRegionId = 'safeupi-qr-video-region';
 
-  // Available sample QR payloads for instant testing
+  // Sample scenarios for instant testing
   const sampleScenarios = [
     {
+      id: 'scam1',
       title: 'Electricity Refund Scam',
       badge: 'HIGH RISK',
       color: '#DC2626',
       payload: 'upi://pay?pa=refund-desk-8899@paytm&pn=Electricity%20Department&am=4500&cu=INR&tn=Scan%20to%20receive%20refund',
+      desc: 'Impersonates electricity department with deceptive refund lure & collect trap.',
     },
     {
+      id: 'scam2',
       title: 'Fake PhonePe Cashback Collect',
       badge: 'HIGH RISK',
       color: '#DC2626',
       payload: 'upi://pay?pa=phonepe.rewards992@ybl&pn=PhonePe%20Reward%20Office&am=1999&cu=INR&tn=Enter%20UPI%20PIN%20to%20credit%20cashback',
+      desc: 'Requests UPI PIN under the false premise of crediting a cashback reward.',
     },
     {
+      id: 'safe1',
       title: 'Legitimate Supermarket QR',
       badge: 'SAFE',
       color: '#059669',
       payload: 'upi://pay?pa=reliancefresh@okaxis&pn=Reliance%20Fresh%20Supermarket&am=240.00&cu=INR&tn=Grocery%20Store%20POS',
+      desc: 'Standard NPCI merchant transaction format without suspicious keywords.',
     },
   ];
 
-  // Stop camera on unmount
+  // Pre-generate scannable QR images for all sample scenarios on mount
   useEffect(() => {
+    sampleScenarios.forEach(async (sc) => {
+      try {
+        const url = await QRCode.toDataURL(sc.payload, {
+          width: 320,
+          margin: 2,
+          color: { dark: '#0A192F', light: '#FFFFFF' },
+          errorCorrectionLevel: 'M',
+        });
+        setPresetQrImages((prev) => ({ ...prev, [sc.id]: url }));
+      } catch (err) {
+        console.warn('Could not generate sample QR:', err);
+      }
+    });
+
+    // Enumerate connected cameras initially
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (devices && devices.length > 0) {
+          setCameras(devices);
+          setSelectedCameraId(devices[0].id);
+        }
+      })
+      .catch((e) => console.warn('Camera pre-enumeration:', e));
+
     return () => {
       stopCamera();
     };
   }, []);
 
-  // Fetch available camera devices
-  const getCameraDevices = async () => {
+  // Audio chime feedback for successful scan
+  const playSuccessBeep = () => {
     try {
-      const devices = await Html5Qrcode.getCameras();
-      if (devices && devices.length > 0) {
-        setCameras(devices);
-        setSelectedCameraId(devices[0].id);
-        return devices;
-      } else {
-        setCameraError('No camera detected on this system. Please use manual input or image upload.');
-        return [];
-      }
-    } catch (err) {
-      setCameraError('Camera access denied or unavailable. You can still test with sample scenarios or manual payload below.');
-      return [];
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {
+      // AudioContext not supported or blocked
     }
   };
 
   const startCamera = async (cameraId = null) => {
     setCameraError(null);
+    setScannedRaw(null);
     setResult(null);
 
     try {
-      let targetId = cameraId || selectedCameraId;
-      if (!targetId) {
-        const devices = await getCameraDevices();
-        if (devices.length > 0) targetId = devices[0].id;
-        else return;
+      // Clean up previous instance cleanly
+      if (scannerRef.current) {
+        try {
+          if (scannerRef.current.isScanning) {
+            await scannerRef.current.stop();
+          }
+          await scannerRef.current.clear();
+        } catch (e) {
+          console.warn('Clearing previous scanner:', e);
+        }
+        scannerRef.current = null;
       }
 
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(qrRegionId);
-      } else if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
+      setIsScanning(true);
+      setScanTickCount(0);
+
+      // Brief tick to ensure the container div is mounted in the DOM
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Dedicate decoding exclusively to QR codes for maximum speed & sensitivity
+      const html5QrCode = new Html5Qrcode(qrRegionId, {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
+      });
+      scannerRef.current = html5QrCode;
+
+      // Camera selection strategy:
+      // 1. Explicit camera ID passed or selected from dropdown
+      // 2. First enumerated device ID (e.g. USB2.0 HD UVC WebCam)
+      // 3. Fallback to ideal facingMode
+      let cameraConfig;
+      if (cameraId) {
+        cameraConfig = { deviceId: { exact: cameraId } };
+      } else if (selectedCameraId) {
+        cameraConfig = { deviceId: { exact: selectedCameraId } };
+      } else if (cameras.length > 0) {
+        cameraConfig = { deviceId: { exact: cameras[0].id } };
+      } else {
+        cameraConfig = { facingMode: { ideal: 'environment' } };
       }
 
-      await scannerRef.current.start(
-        targetId,
+      await html5QrCode.start(
+        cameraConfig,
         {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          fps: 20, // 20 scans per second for high-speed detection
+          // NOTE: DO NOT pass qrbox! Omitting qrbox scans 100% of the camera frame!
+          // NOTE: DO NOT pass aspectRatio: 1.0! Preserves natural 16:9/4:3 sensor geometry!
         },
         async (decodedText) => {
-          stopCamera();
+          console.log('Real QR Code successfully decoded:', decodedText);
+          playSuccessBeep();
+          if (navigator.vibrate) {
+            try { navigator.vibrate([80, 50, 80]); } catch (e) {}
+          }
+          setScannedRaw(decodedText);
+          await stopCamera();
           analyzePayload(decodedText);
         },
         (errorMessage) => {
-          // Normal frame scan tick
+          // Increment frame counter to visibly prove scanner is continuously active
+          setScanTickCount((prev) => prev + 1);
         }
       );
 
-      setIsScanning(true);
+      // Re-enumerate cameras if needed
+      Html5Qrcode.getCameras()
+        .then((devices) => {
+          if (devices && devices.length > 0) {
+            setCameras(devices);
+            if (!selectedCameraId) {
+              setSelectedCameraId(devices[0].id);
+            }
+          }
+        })
+        .catch((e) => console.warn('Camera enumeration error:', e));
+
     } catch (err) {
-      console.warn('Failed to start camera:', err);
-      setCameraError(err.message || 'Unable to start camera stream.');
+      console.error('Failed to start camera:', err);
       setIsScanning(false);
+      let msg = err.message || 'Unable to access camera.';
+      if (err.name === 'NotAllowedError' || msg.includes('Permission')) {
+        msg = 'Camera permission was denied. Please click the lock/tune icon in your browser address bar, set Camera to "Allow", and try again.';
+      } else if (err.name === 'NotFoundError' || msg.includes('No camera')) {
+        msg = 'No physical webcam detected on this device. You can use "Take Photo with Camera", "Upload QR Image", or manual input.';
+      } else if (msg.includes('secure context') || msg.includes('getUserMedia')) {
+        msg = 'Camera requires a secure context (https or localhost). If opening on mobile over local Wi-Fi, use "Take Photo with Camera" or upload a screenshot.';
+      }
+      setCameraError(msg);
     }
   };
 
   const stopCamera = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
+    if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+        await scannerRef.current.clear();
       } catch (e) {
         // ignore
       }
-      setIsScanning(false);
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
+  };
+
+  const switchCamera = async () => {
+    if (cameras.length <= 1) return;
+    const currentIdx = cameras.findIndex((c) => c.id === selectedCameraId);
+    const nextIdx = (currentIdx + 1) % cameras.length;
+    const nextId = cameras[nextIdx].id;
+    setSelectedCameraId(nextId);
+    if (isScanning) {
+      await stopCamera();
+      startCamera(nextId);
     }
   };
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files && e.target.files[0];
     if (!file) return;
 
     setFileError(null);
+    setScannedRaw(null);
     setLoading(true);
 
     try {
-      const html5Qr = new Html5Qrcode('file-upload-temp-region');
+      const html5Qr = new Html5Qrcode('file-upload-temp-region', {
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        verbose: false,
+      });
       const decodedText = await html5Qr.scanFile(file, true);
+      try { await html5Qr.clear(); } catch (e) {}
+
+      console.log('Decoded from image file:', decodedText);
+      playSuccessBeep();
+      setScannedRaw(decodedText);
       analyzePayload(decodedText);
     } catch (err) {
-      setFileError('Could not decode a valid QR code from this image. Please ensure the QR is clear and well-lit.');
+      setFileError('Could not decode a valid QR code from this image. Please ensure the QR code is clearly visible, well-lit, and in focus.');
       setLoading(false);
     }
   };
@@ -165,33 +291,29 @@ export default function QrScannerView({ onReportScam }) {
 
   const handleManualSubmit = (e) => {
     e.preventDefault();
+    setScannedRaw(manualPayload);
     analyzePayload(manualPayload);
   };
 
-  const switchCamera = async () => {
-    if (cameras.length <= 1) return;
-    const currentIdx = cameras.findIndex((c) => c.id === selectedCameraId);
-    const nextIdx = (currentIdx + 1) % cameras.length;
-    const nextId = cameras[nextIdx].id;
-    setSelectedCameraId(nextId);
-    if (isScanning) {
-      await stopCamera();
-      startCamera(nextId);
-    }
-  };
-
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '920px', margin: '0 auto' }}>
+      {/* Hidden container for file scanning */}
+      <div
+        id="file-upload-temp-region"
+        style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
+      />
+
+      {/* Header */}
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-          UPI QR Code Fraud Scanner
+          {t('qrTitle')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Scan physical or digital UPI QR codes to inspect the payee identity, requested amount, and deceptive transaction lures.
+          {t('qrSubtitle')}
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Navigation Tabs */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -220,7 +342,7 @@ export default function QrScannerView({ onReportScam }) {
           }}
         >
           <Camera size={18} />
-          <span>Live Camera Scan</span>
+          <span>{t('tabLiveCamera')}</span>
         </button>
 
         <button
@@ -240,7 +362,7 @@ export default function QrScannerView({ onReportScam }) {
           }}
         >
           <Upload size={18} />
-          <span>Upload QR Image</span>
+          <span>{t('tabUploadImage')}</span>
         </button>
 
         <button
@@ -260,94 +382,240 @@ export default function QrScannerView({ onReportScam }) {
           }}
         >
           <Keyboard size={18} />
-          <span>Manual Input / Scenarios</span>
+          <span>{t('tabManualInput')}</span>
         </button>
       </div>
 
       {/* Mode 1: Camera Scanner */}
       {activeTab === 'camera' && (
         <div className="safe-card" style={{ textAlign: 'center', position: 'relative' }}>
-          <div
-            id={qrRegionId}
-            style={{
-              width: '100%',
-              maxWidth: '480px',
-              minHeight: '300px',
-              margin: '0 auto 1.25rem auto',
-              background: 'var(--bg-surface)',
-              borderRadius: 'var(--radius-md)',
-              overflow: 'hidden',
-              border: isScanning ? '2px solid var(--primary-bright)' : '1px dashed var(--border-color)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          {/* Scanner Viewport Container */}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '520px', margin: '0 auto 1.25rem auto' }}>
+            {/* The dedicated mount node for Html5Qrcode - No React children inside */}
+            <div
+              id={qrRegionId}
+              style={{
+                width: '100%',
+                minHeight: isScanning ? '340px' : '0px',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden',
+                display: isScanning ? 'block' : 'none',
+                border: '2px solid var(--primary-bright)',
+                background: '#000000',
+                boxShadow: '0 4px 25px rgba(0, 0, 0, 0.25)',
+              }}
+            />
+
+            {/* Active Scanning Overlay with reticle & live radar */}
+            {isScanning && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  padding: '1rem',
+                }}
+              >
+                {/* Status Bar */}
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  background: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(4px)',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '9999px',
+                  color: '#FFFFFF',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  alignSelf: 'center',
+                }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }} className="pulse-dot" />
+                  <span>{t('scanningFullFrame')}</span>
+                </div>
+
+                {/* Laser Scanning Line */}
+                <div className="scanner-laser" />
+
+                {/* Corner reticle guides */}
+                <div style={{
+                  position: 'absolute',
+                  top: '20%',
+                  left: '20%',
+                  right: '20%',
+                  bottom: '20%',
+                  border: '2px dashed rgba(255, 255, 255, 0.4)',
+                  borderRadius: '16px',
+                  pointerEvents: 'none',
+                }} />
+
+                <div style={{
+                  background: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(4px)',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 'var(--radius-sm)',
+                  color: 'rgba(255, 255, 255, 0.85)',
+                  fontSize: '0.74rem',
+                  alignSelf: 'center',
+                }}>
+                  {t('alignQrGuide')}
+                </div>
+              </div>
+            )}
+
+            {/* Idle Placeholder Card when camera is NOT active */}
             {!isScanning && (
-              <div style={{ padding: '2rem 1rem', color: 'var(--text-muted)' }}>
-                <Camera size={48} color="var(--primary-bright)" style={{ margin: '0 auto 1rem auto', opacity: 0.8 }} />
-                <h4 style={{ color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                  Camera Ready
+              <div
+                style={{
+                  width: '100%',
+                  minHeight: '280px',
+                  background: 'var(--bg-surface)',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px dashed var(--border-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '2.5rem 1.5rem',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Camera size={52} color="var(--primary-bright)" style={{ margin: '0 auto 1rem auto', opacity: 0.9 }} />
+                <h4 style={{ color: 'var(--text-main)', fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.4rem' }}>
+                  {t('cameraReady')}
                 </h4>
-                <p style={{ fontSize: '0.85rem', maxWidth: '320px', margin: '0 auto' }}>
-                  Click Start Camera below to scan real physical UPI QR codes using your device's webcam or mobile camera.
+                <p style={{ fontSize: '0.88rem', maxWidth: '360px', margin: '0 auto', lineHeight: 1.5 }}>
+                  {t('cameraReadyDesc')}
                 </p>
               </div>
             )}
           </div>
 
-          {/* Camera Controls */}
+          {/* Controls Bar */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.75rem' }}>
             {!isScanning ? (
-              <button
-                onClick={() => startCamera()}
-                className="btn-primary"
-                style={{ padding: '0.75rem 1.75rem' }}
-              >
-                <Camera size={18} />
-                <span>Start Camera Scanner</span>
-              </button>
+              <>
+                <button
+                  onClick={() => startCamera()}
+                  className="btn-primary"
+                  style={{ padding: '0.75rem 1.75rem', fontSize: '0.92rem' }}
+                >
+                  <Camera size={18} />
+                  <span>{t('startLiveCamera')}</span>
+                </button>
+
+                {/* Instant Snapshot Fallback */}
+                <label
+                  className="btn-secondary"
+                  style={{
+                    padding: '0.75rem 1.35rem',
+                    fontSize: '0.92rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                  }}
+                  title="Take a high-resolution snapshot using your device's native camera"
+                >
+                  <Camera size={18} color="var(--primary-bright)" />
+                  <span>{t('takePhotoCamera')}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </>
             ) : (
               <>
                 <button
                   onClick={stopCamera}
                   className="btn-danger"
-                  style={{ padding: '0.75rem 1.5rem' }}
+                  style={{ padding: '0.75rem 1.5rem', fontSize: '0.92rem' }}
                 >
                   <CameraOff size={18} />
-                  <span>Stop Camera</span>
+                  <span>{t('stopCamera')}</span>
                 </button>
+
                 {cameras.length > 1 && (
                   <button
                     onClick={switchCamera}
                     className="btn-secondary"
-                    style={{ padding: '0.75rem 1.5rem' }}
+                    style={{ padding: '0.75rem 1.25rem', fontSize: '0.92rem' }}
                   >
                     <SwitchCamera size={18} />
-                    <span>Switch Camera</span>
+                    <span>{t('switchCamera')}</span>
                   </button>
                 )}
               </>
             )}
           </div>
 
+          {/* Active Camera Selector Dropdown */}
+          {cameras.length > 0 && !isScanning && (
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{t('selectCameraDevice')}</span>
+              <select
+                className="form-select"
+                style={{ width: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.82rem' }}
+                value={selectedCameraId}
+                onChange={(e) => {
+                  setSelectedCameraId(e.target.value);
+                }}
+              >
+                {cameras.map((c, i) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label || `Camera ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Pro-Tips: Why Webcams Struggle to Read QR Codes */}
+          <div style={{
+            margin: '1.5rem auto 0 auto',
+            maxWidth: '650px',
+            textAlign: 'left',
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            padding: '1rem 1.25rem',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--primary-bright)', fontWeight: 700, fontSize: '0.88rem' }}>
+              <Info size={17} />
+              <span>{t('scanningTipsTitle')}</span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+              <li>{t('tipFocusDistance')}</li>
+              <li>{t('tipGlare')}</li>
+              <li>{t('tipSnapshot')}</li>
+            </ul>
+          </div>
+
+          {/* Camera Error Message */}
           {cameraError && (
             <div style={{
               marginTop: '1.25rem',
-              padding: '0.85rem 1.25rem',
+              padding: '1rem 1.25rem',
               background: 'var(--risk-high-bg)',
               border: '1px solid var(--risk-high-border)',
               borderRadius: 'var(--radius-md)',
               color: 'var(--risk-high-text)',
               fontSize: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
+              textAlign: 'left',
             }}>
-              <AlertCircle size={18} />
-              <span>{cameraError}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span style={{ fontWeight: 700 }}>{cameraError}</span>
+              </div>
             </div>
           )}
         </div>
@@ -356,7 +624,6 @@ export default function QrScannerView({ onReportScam }) {
       {/* Mode 2: Upload Image */}
       {activeTab === 'file' && (
         <div className="safe-card" style={{ textAlign: 'center' }}>
-          <div id="file-upload-temp-region" style={{ display: 'none' }} />
           <div style={{
             border: '2px dashed var(--border-color)',
             borderRadius: 'var(--radius-lg)',
@@ -365,22 +632,38 @@ export default function QrScannerView({ onReportScam }) {
             background: 'var(--bg-surface)',
             transition: 'border-color 0.2s',
           }}>
-            <Upload size={44} color="var(--primary-bright)" style={{ margin: '0 auto 1rem auto' }} />
-            <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
-              Upload QR Code Screenshot or Image
+            <Upload size={48} color="var(--primary-bright)" style={{ margin: '0 auto 1rem auto' }} />
+            <h4 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.4rem' }}>
+              {t('uploadTitle')}
             </h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-              Select a PNG, JPG, or WEBP image containing a UPI payment QR code.
+            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '1.5rem', maxWidth: '420px', margin: '0 auto 1.5rem auto' }}>
+              {t('uploadSubtitle')}
             </p>
-            <label className="btn-primary" style={{ display: 'inline-flex', cursor: 'pointer' }}>
-              <span>Choose Image File</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-            </label>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.75rem' }}>
+              <label className="btn-primary" style={{ display: 'inline-flex', cursor: 'pointer', padding: '0.75rem 1.5rem' }}>
+                <Upload size={18} />
+                <span>{t('chooseImageBtn')}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+
+              <label className="btn-secondary" style={{ display: 'inline-flex', cursor: 'pointer', padding: '0.75rem 1.5rem' }}>
+                <Camera size={18} color="var(--primary-bright)" />
+                <span>{t('takePhotoCamera')}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
           </div>
 
           {fileError && (
@@ -392,8 +675,13 @@ export default function QrScannerView({ onReportScam }) {
               borderRadius: 'var(--radius-md)',
               color: 'var(--risk-high-text)',
               fontSize: '0.85rem',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
             }}>
-              {fileError}
+              <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <span>{fileError}</span>
             </div>
           )}
         </div>
@@ -405,12 +693,12 @@ export default function QrScannerView({ onReportScam }) {
           <form onSubmit={handleManualSubmit}>
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                UPI URI or Raw QR Payload:
+                {t('manualLabel')}
               </label>
               <textarea
                 className="form-textarea"
                 rows={3}
-                placeholder="e.g. upi://pay?pa=merchant@okicici&pn=Merchant%20Name&am=250&cu=INR&tn=Bill"
+                placeholder={t('manualPlaceholder')}
                 value={manualPayload}
                 onChange={(e) => setManualPayload(e.target.value)}
                 required
@@ -425,69 +713,140 @@ export default function QrScannerView({ onReportScam }) {
               {loading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin" />
-                  <span>Evaluating Risk Heuristics...</span>
+                  <span>{t('analyzingHeuristics')}</span>
                 </>
               ) : (
                 <>
                   <ShieldAlert size={18} />
-                  <span>Analyze QR Payload</span>
+                  <span>{t('analyzeQrBtn')}</span>
                 </>
               )}
             </button>
           </form>
+        </div>
+      )}
 
-          {/* Test Presets */}
-          <div style={{ marginTop: '1.75rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
-              Quick Test Presets (One-Click Verification)
-            </span>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-              {sampleScenarios.map((sc, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    setManualPayload(sc.payload);
-                    analyzePayload(sc.payload);
-                  }}
-                  style={{
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-color)',
-                    padding: '0.85rem 1rem',
-                    borderRadius: 'var(--radius-md)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    transition: 'all 0.15s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = sc.color;
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-color)';
-                    e.currentTarget.style.transform = 'none';
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-main)' }}>{sc.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', wordBreak: 'break-all' }}>{sc.payload}</div>
-                  </div>
+      {/* Scannable Test QR Presets (Available on all tabs for easy testing!) */}
+      <div className="safe-card" style={{ marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+              {t('quickTestTitle')}
+            </h3>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0.2rem 0 0 0' }}>
+              {t('quickTestSubtitle')}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '1rem' }}>
+          {sampleScenarios.map((sc) => (
+            <div
+              key={sc.id}
+              style={{
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-main)' }}>
+                    {sc.title}
+                  </span>
                   <span style={{
-                    fontSize: '0.72rem',
+                    fontSize: '0.7rem',
                     fontWeight: 800,
                     color: sc.color,
                     background: 'var(--bg-card)',
-                    padding: '0.2rem 0.5rem',
+                    padding: '0.15rem 0.5rem',
                     borderRadius: '4px',
                     border: `1px solid ${sc.color}40`,
-                    whiteSpace: 'nowrap',
-                    marginLeft: '1rem',
                   }}>
                     {sc.badge}
                   </span>
                 </div>
-              ))}
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                  {sc.desc}
+                </p>
+
+                {/* Scannable QR Code Thumbnail */}
+                {presetQrImages[sc.id] && (
+                  <div style={{ textAlign: 'center', margin: '0.5rem 0' }}>
+                    <img
+                      src={presetQrImages[sc.id]}
+                      alt={sc.title}
+                      style={{
+                        width: '140px',
+                        height: '140px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        background: '#FFF',
+                        padding: '4px',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setShowTestQrModal(sc)}
+                      title="Click to expand QR code to full size"
+                    />
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem' }}>
+                      (Click QR to enlarge on screen)
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    setManualPayload(sc.payload);
+                    setScannedRaw(sc.payload);
+                    analyzePayload(sc.payload);
+                  }}
+                  className="btn-primary"
+                  style={{ flex: 1, padding: '0.5rem', fontSize: '0.8rem' }}
+                >
+                  <ShieldAlert size={14} />
+                  <span>{t('analyzePresetBtn')}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowTestQrModal(sc)}
+                  className="btn-secondary"
+                  style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}
+                  title="Enlarge QR Code"
+                >
+                  <Eye size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Raw Scanned Payload Feedback Banner */}
+      {scannedRaw && (
+        <div style={{
+          marginTop: '1.5rem',
+          padding: '0.85rem 1.25rem',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          textAlign: 'left',
+        }}>
+          <CheckCircle2 size={22} color="var(--risk-low)" style={{ flexShrink: 0 }} />
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--risk-low)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {t('qrDetectedBanner')}
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '2px' }}>
+              {scannedRaw}
             </div>
           </div>
         </div>
@@ -495,23 +854,106 @@ export default function QrScannerView({ onReportScam }) {
 
       {/* Loading state */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+        <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
           <RefreshCw size={36} color="var(--primary-bright)" className="animate-spin" style={{ margin: '0 auto 1rem auto' }} />
           <h4 style={{ color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 700 }}>
-            Analyzing UPI Indicators...
+            {t('analyzingHeuristics')}
           </h4>
           <p style={{ fontSize: '0.85rem' }}>
-            Running Java rules engine: checking institutional impersonation, collect request traps & blacklist...
+            {t('analyzingRulesEngine')}
           </p>
         </div>
       )}
 
-      {/* Result Card */}
+      {/* Risk Analysis Result Card */}
       {result && (
-        <RiskCard
-          result={result}
-          onReportScam={onReportScam}
-        />
+        <div style={{ marginTop: '1.5rem' }}>
+          <RiskCard
+            result={result}
+            onReportScam={onReportScam}
+          />
+        </div>
+      )}
+
+      {/* Modal: Full-screen Enlarge QR Code for phone testing */}
+      {showTestQrModal && (
+        <div
+          onClick={() => setShowTestQrModal(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(6px)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="safe-card"
+            style={{ maxWidth: '420px', width: '100%', textAlign: 'center', padding: '2rem' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                {showTestQrModal.title}
+              </span>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: showTestQrModal.color,
+                background: 'var(--bg-surface)',
+                padding: '0.2rem 0.5rem',
+                borderRadius: '4px',
+              }}>
+                {showTestQrModal.badge}
+              </span>
+            </div>
+
+            <div style={{
+              background: '#FFFFFF',
+              padding: '1rem',
+              borderRadius: '16px',
+              display: 'inline-block',
+              margin: '0.5rem auto 1rem auto',
+              boxShadow: '0 8px 30px rgba(0, 0, 0, 0.2)',
+            }}>
+              <img
+                src={presetQrImages[showTestQrModal.id]}
+                alt={showTestQrModal.title}
+                style={{ width: '260px', height: '260px', display: 'block' }}
+              />
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              {t('enlargeQrModalTitle')}
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => {
+                  setManualPayload(showTestQrModal.payload);
+                  setScannedRaw(showTestQrModal.payload);
+                  analyzePayload(showTestQrModal.payload);
+                  setShowTestQrModal(null);
+                }}
+                className="btn-primary"
+                style={{ flex: 1, padding: '0.65rem' }}
+              >
+                {t('scanDirectly')}
+              </button>
+              <button
+                onClick={() => setShowTestQrModal(null)}
+                className="btn-secondary"
+                style={{ padding: '0.65rem 1.25rem' }}
+              >
+                {t('close')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <style>{`
@@ -521,6 +963,28 @@ export default function QrScannerView({ onReportScam }) {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        .scanner-laser {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, transparent 0%, #00E5FF 50%, transparent 100%);
+          box-shadow: 0 0 14px #00E5FF;
+          animation: scanLaser 2.2s ease-in-out infinite alternate;
+        }
+        @keyframes scanLaser {
+          0% { top: 10%; opacity: 0.3; }
+          50% { opacity: 1; }
+          100% { top: 90%; opacity: 0.3; }
+        }
+        .pulse-dot {
+          animation: pulseDot 1.5s infinite;
+        }
+        @keyframes pulseDot {
+          0% { transform: scale(0.9); opacity: 0.7; }
+          50% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(0.9); opacity: 0.7; }
         }
       `}</style>
     </div>

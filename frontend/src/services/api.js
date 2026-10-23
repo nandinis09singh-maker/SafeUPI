@@ -216,10 +216,10 @@ function fallbackAnalyzeQr(payload) {
 
   try {
     const url = new URL(p.startsWith('upi://') ? p : `upi://pay?${p}`);
-    payeeVpa = url.searchParams.get('pa') || '';
-    payeeName = url.searchParams.get('pn') || '';
-    amount = url.searchParams.get('am') || '';
-    note = url.searchParams.get('tn') || '';
+    payeeVpa = url.searchParams.get('pa') || url.searchParams.get('PA') || '';
+    payeeName = url.searchParams.get('pn') || url.searchParams.get('PN') || '';
+    amount = url.searchParams.get('am') || url.searchParams.get('AM') || '';
+    note = url.searchParams.get('tn') || url.searchParams.get('TN') || '';
   } catch (e) {
     if (p.includes('@')) payeeVpa = p;
   }

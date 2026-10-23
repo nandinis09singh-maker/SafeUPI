@@ -77,10 +77,10 @@ export default function MessageCheckerView({ onReportScam }) {
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
-          SMS & WhatsApp Scam Checker
+          {t('msgTitle')}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Detect suspicious refund lures, UPI PIN extortion, fake electricity disconnection notices, and OTP theft.
+          {t('msgSubtitle')}
         </p>
       </div>
 
@@ -88,12 +88,12 @@ export default function MessageCheckerView({ onReportScam }) {
         <form onSubmit={handleAnalyze}>
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-              Message Text (Paste SMS or WhatsApp message):
+              {t('msgInputLabel')}
             </label>
             <textarea
               className="form-textarea"
               rows={4}
-              placeholder="Paste the suspicious text message here..."
+              placeholder={t('msgPlaceholder')}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               required
@@ -102,12 +102,12 @@ export default function MessageCheckerView({ onReportScam }) {
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-              Sender ID or Phone Number (Optional):
+              {t('senderIdLabel')}
             </label>
             <input
               type="text"
               className="form-input"
-              placeholder="e.g. +91 9876543210 or VM-HDFCBK"
+              placeholder={t('senderIdPlaceholder')}
               value={senderId}
               onChange={(e) => setSenderId(e.target.value)}
             />
@@ -125,12 +125,12 @@ export default function MessageCheckerView({ onReportScam }) {
             {loading ? (
               <>
                 <RefreshCw size={18} className="animate-spin" />
-                <span>Evaluating Behavioral Patterns...</span>
+                <span>{t('analyzingHeuristics')}</span>
               </>
             ) : (
               <>
                 <ShieldAlert size={18} />
-                <span>Analyze Message Now</span>
+                <span>{t('analyzeMsgBtn')}</span>
               </>
             )}
           </button>
@@ -139,7 +139,7 @@ export default function MessageCheckerView({ onReportScam }) {
         {/* Quick Test Presets */}
         <div style={{ marginTop: '1.75rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
-            Preloaded Scam Test Cases (Click to Test)
+            {t('msgScenariosTitle')}
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem' }}>
             {presets.map((p, i) => (

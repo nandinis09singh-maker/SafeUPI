@@ -58,7 +58,7 @@ function AppContent() {
             </div>
             <div style={{ fontSize: '0.75rem', color: '#E9D5FF', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Info size={14} />
-              <span>National Fraud Awareness Standard</span>
+              <span>{t('ruleSubtext')}</span>
             </div>
           </div>
 
