@@ -40,6 +40,13 @@ export default function QrScannerView({ onReportScam }) {
   const [showTestQrModal, setShowTestQrModal] = useState(null);
   const [presetQrImages, setPresetQrImages] = useState({});
 
+  // Snapshot Photo Modal states (Desktop & Mobile webcam photo capture)
+  const [showSnapshotModal, setShowSnapshotModal] = useState(false);
+  const [snapshotError, setSnapshotError] = useState(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const snapshotVideoRef = useRef(null);
+  const snapshotStreamRef = useRef(null);
+
   const scannerRef = useRef(null);
   const qrRegionId = 'safeupi-qr-video-region';
 
@@ -286,6 +293,97 @@ export default function QrScannerView({ onReportScam }) {
     }
   };
 
+  const openSnapshotCamera = async () => {
+    if (isScanning) {
+      await stopCamera();
+    }
+    setShowSnapshotModal(true);
+    setSnapshotError(null);
+    setIsCapturing(false);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      }).catch(async () => {
+        return await navigator.mediaDevices.getUserMedia({ video: true });
+      });
+
+      snapshotStreamRef.current = stream;
+      setTimeout(() => {
+        if (snapshotVideoRef.current) {
+          snapshotVideoRef.current.srcObject = stream;
+          snapshotVideoRef.current.play().catch((e) => console.warn('Video play error:', e));
+        }
+      }, 150);
+    } catch (err) {
+      console.error('Failed to open snapshot camera:', err);
+      let msg = 'Could not access your webcam.';
+      if (err.name === 'NotAllowedError') {
+        msg = 'Camera permission was denied. Please click the 🔒 lock icon in your browser address bar and set Camera to "Allow".';
+      } else if (err.name === 'NotReadableError') {
+        msg = 'Your webcam is currently being used by another application (Zoom, Teams) or another browser tab. Please close it and try again.';
+      }
+      setSnapshotError(msg);
+    }
+  };
+
+  const closeSnapshotCamera = () => {
+    if (snapshotStreamRef.current) {
+      snapshotStreamRef.current.getTracks().forEach((t) => t.stop());
+      snapshotStreamRef.current = null;
+    }
+    setShowSnapshotModal(false);
+    setSnapshotError(null);
+    setIsCapturing(false);
+  };
+
+  const takeSnapshotAndScan = async () => {
+    if (!snapshotVideoRef.current) return;
+    const video = snapshotVideoRef.current;
+    if (!video.videoWidth || !video.videoHeight) return;
+
+    setIsCapturing(true);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    closeSnapshotCamera();
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], 'webcam-snapshot.png', { type: 'image/png' });
+      setLoading(true);
+      setFileError(null);
+      setScannedRaw(null);
+
+      try {
+        const html5Qr = new Html5Qrcode('file-upload-temp-region', {
+          formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+          verbose: false,
+        });
+        const decodedText = await html5Qr.scanFile(file, true);
+        try { await html5Qr.clear(); } catch (e) {}
+
+        console.log('Decoded from snapshot:', decodedText);
+        playSuccessBeep();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([80, 50, 80]); } catch (e) {}
+        }
+        setScannedRaw(decodedText);
+        analyzePayload(decodedText);
+      } catch (err) {
+        setFileError('Could not detect a valid QR code in the captured photo. Hold your QR code closer to the camera (~1 foot away) and make sure it is well-lit.');
+        setLoading(false);
+      }
+    }, 'image/png');
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -435,12 +533,15 @@ export default function QrScannerView({ onReportScam }) {
               style={{
                 width: '100%',
                 minHeight: isScanning ? '340px' : '0px',
+                height: isScanning ? 'auto' : '0px',
                 borderRadius: 'var(--radius-md)',
                 overflow: 'hidden',
-                display: isScanning ? 'block' : 'none',
-                border: '2px solid var(--primary-bright)',
+                opacity: isScanning ? 1 : 0,
+                position: isScanning ? 'relative' : 'absolute',
+                pointerEvents: isScanning ? 'auto' : 'none',
+                border: isScanning ? '2px solid var(--primary-bright)' : 'none',
                 background: '#000000',
-                boxShadow: '0 4px 25px rgba(0, 0, 0, 0.25)',
+                boxShadow: isScanning ? '0 4px 25px rgba(0, 0, 0, 0.25)' : 'none',
               }}
             />
 
@@ -547,8 +648,10 @@ export default function QrScannerView({ onReportScam }) {
                   <span>{t('startLiveCamera')}</span>
                 </button>
 
-                {/* Instant Snapshot Fallback */}
-                <label
+                {/* Instant Snapshot Fallback with live webcam photo booth */}
+                <button
+                  type="button"
+                  onClick={openSnapshotCamera}
                   className="btn-secondary"
                   style={{
                     padding: '0.75rem 1.35rem',
@@ -556,20 +659,12 @@ export default function QrScannerView({ onReportScam }) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    cursor: 'pointer',
                   }}
-                  title="Take a high-resolution snapshot using your device's native camera"
+                  title="Open webcam view and snap a clear photo of the QR code"
                 >
                   <Camera size={18} color="var(--primary-bright)" />
                   <span>{t('takePhotoCamera')}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                  />
-                </label>
+                </button>
               </>
             ) : (
               <>
@@ -678,7 +773,9 @@ export default function QrScannerView({ onReportScam }) {
                   <span>{t('tryAgainBtn')}</span>
                 </button>
 
-                <label
+                <button
+                  type="button"
+                  onClick={openSnapshotCamera}
                   className="btn-secondary"
                   style={{
                     padding: '0.5rem 1rem',
@@ -686,19 +783,11 @@ export default function QrScannerView({ onReportScam }) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '0.4rem',
-                    cursor: 'pointer',
                   }}
                 >
                   <Camera size={14} color="var(--primary-bright)" />
                   <span>{t('takePhotoCamera')}</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                  />
-                </label>
+                </button>
 
                 <button
                   onClick={() => setActiveTab('file')}
@@ -745,17 +834,21 @@ export default function QrScannerView({ onReportScam }) {
                 />
               </label>
 
-              <label className="btn-secondary" style={{ display: 'inline-flex', cursor: 'pointer', padding: '0.75rem 1.5rem' }}>
+              <button
+                type="button"
+                onClick={openSnapshotCamera}
+                className="btn-secondary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '0.92rem',
+                }}
+              >
                 <Camera size={18} color="var(--primary-bright)" />
                 <span>{t('takePhotoCamera')}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              </button>
             </div>
           </div>
 
@@ -1045,6 +1138,182 @@ export default function QrScannerView({ onReportScam }) {
                 {t('close')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live Webcam Snapshot Modal (Direct webcam viewfinder for PC & Mobile) */}
+      {showSnapshotModal && (
+        <div
+          onClick={closeSnapshotCamera}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 140,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.25rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="safe-card"
+            style={{
+              maxWidth: '560px',
+              width: '100%',
+              padding: '1.5rem',
+              position: 'relative',
+              textAlign: 'center',
+            }}
+          >
+            {/* Close Button */}
+            <button
+              onClick={closeSnapshotCamera}
+              style={{
+                position: 'absolute',
+                top: '1rem',
+                right: '1rem',
+                color: 'var(--text-dim)',
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={18} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+              <Camera size={22} color="var(--primary-bright)" />
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
+                Webcam Camera Photo
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Hold your QR code up to your webcam, then click "Capture Photo & Scan".
+            </p>
+
+            {snapshotError ? (
+              <div style={{
+                padding: '1.25rem',
+                background: 'var(--risk-high-bg)',
+                border: '1px solid var(--risk-high-border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--risk-high-text)',
+                fontSize: '0.86rem',
+                textAlign: 'left',
+                marginBottom: '1rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <AlertCircle size={20} color="var(--risk-high)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ fontWeight: 700 }}>{snapshotError}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Tip: Look at the top address bar in Chrome, click the 🔒 lock icon next to the URL, and ensure Camera is set to "Allow".
+                </p>
+                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+                  <button onClick={openSnapshotCamera} className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}>
+                    <RefreshCw size={14} />
+                    <span>Try Again</span>
+                  </button>
+                  <button onClick={closeSnapshotCamera} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {/* Live Video Viewport */}
+                <div style={{
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: '4/3',
+                  maxHeight: '340px',
+                  background: '#000',
+                  borderRadius: 'var(--radius-md)',
+                  overflow: 'hidden',
+                  margin: '0 auto 1.25rem auto',
+                  border: '2px solid var(--primary-bright)',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                }}>
+                  <video
+                    ref={snapshotVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+
+                  {/* Target frame overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '15%',
+                    left: '15%',
+                    right: '15%',
+                    bottom: '15%',
+                    border: '2px dashed rgba(255, 255, 255, 0.7)',
+                    borderRadius: '12px',
+                    pointerEvents: 'none',
+                    boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.35)',
+                  }} />
+
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '0.75rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#fff',
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '9999px',
+                    fontSize: '0.74rem',
+                    pointerEvents: 'none',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    Hold QR code here
+                  </div>
+                </div>
+
+                {/* Shutter Button */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+                  <button
+                    onClick={takeSnapshotAndScan}
+                    disabled={isCapturing}
+                    className="btn-primary"
+                    style={{
+                      padding: '0.85rem 2rem',
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      boxShadow: '0 4px 15px rgba(29, 106, 229, 0.4)',
+                    }}
+                  >
+                    <Camera size={20} />
+                    <span>{isCapturing ? 'Processing Photo...' : '📸 Capture Photo & Scan'}</span>
+                  </button>
+                  <button
+                    onClick={closeSnapshotCamera}
+                    className="btn-secondary"
+                    style={{ padding: '0.85rem 1.25rem', fontSize: '0.9rem' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
