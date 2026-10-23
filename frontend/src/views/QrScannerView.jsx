@@ -156,45 +156,79 @@ export default function QrScannerView({ onReportScam }) {
       });
       scannerRef.current = html5QrCode;
 
-      // Camera selection strategy:
-      // 1. Explicit camera ID passed or selected from dropdown
-      // 2. First enumerated device ID (e.g. USB2.0 HD UVC WebCam)
-      // 3. Fallback to ideal facingMode
-      let cameraConfig;
-      if (cameraId) {
-        cameraConfig = { deviceId: { exact: cameraId } };
-      } else if (selectedCameraId) {
-        cameraConfig = { deviceId: { exact: selectedCameraId } };
-      } else if (cameras.length > 0) {
-        cameraConfig = { deviceId: { exact: cameras[0].id } };
-      } else {
-        cameraConfig = { facingMode: { ideal: 'environment' } };
+      // Ensure devices list is up to date
+      let availableDevices = cameras;
+      if (!availableDevices || availableDevices.length === 0) {
+        try {
+          const devs = await Html5Qrcode.getCameras();
+          if (devs && devs.length > 0) {
+            setCameras(devs);
+            availableDevices = devs;
+          }
+        } catch (e) {
+          console.warn('Initial camera query warning:', e);
+        }
       }
 
-      await html5QrCode.start(
-        cameraConfig,
-        {
-          fps: 20, // 20 scans per second for high-speed detection
-          // NOTE: DO NOT pass qrbox! Omitting qrbox scans 100% of the camera frame!
-          // NOTE: DO NOT pass aspectRatio: 1.0! Preserves natural 16:9/4:3 sensor geometry!
-        },
-        async (decodedText) => {
-          console.log('Real QR Code successfully decoded:', decodedText);
-          playSuccessBeep();
-          if (navigator.vibrate) {
-            try { navigator.vibrate([80, 50, 80]); } catch (e) {}
-          }
-          setScannedRaw(decodedText);
-          await stopCamera();
-          analyzePayload(decodedText);
-        },
-        (errorMessage) => {
-          // Increment frame counter to visibly prove scanner is continuously active
-          setScanTickCount((prev) => prev + 1);
-        }
-      );
+      const scanConfig = { fps: 20 };
 
-      // Re-enumerate cameras if needed
+      const onScanSuccess = async (decodedText) => {
+        console.log('Real QR Code successfully decoded:', decodedText);
+        playSuccessBeep();
+        if (navigator.vibrate) {
+          try { navigator.vibrate([80, 50, 80]); } catch (e) {}
+        }
+        setScannedRaw(decodedText);
+        await stopCamera();
+        analyzePayload(decodedText);
+      };
+
+      const onScanFailure = () => {
+        setScanTickCount((prev) => prev + 1);
+      };
+
+      let started = false;
+      let lastErr = null;
+
+      // Strategy 1: Known Camera Device ID (plain string ID)
+      const targetId = cameraId || selectedCameraId || (availableDevices?.[0]?.id);
+      if (targetId) {
+        try {
+          await html5QrCode.start(targetId, scanConfig, onScanSuccess, onScanFailure);
+          started = true;
+        } catch (e) {
+          console.warn('Direct device ID start failed, trying facingMode user:', e);
+          lastErr = e;
+        }
+      }
+
+      // Strategy 2: Laptop Front Camera (facingMode "user")
+      if (!started) {
+        try {
+          await html5QrCode.start({ facingMode: 'user' }, scanConfig, onScanSuccess, onScanFailure);
+          started = true;
+        } catch (e) {
+          console.warn('facingMode user failed, trying environment:', e);
+          lastErr = e;
+        }
+      }
+
+      // Strategy 3: Mobile Back Camera (facingMode "environment")
+      if (!started) {
+        try {
+          await html5QrCode.start({ facingMode: 'environment' }, scanConfig, onScanSuccess, onScanFailure);
+          started = true;
+        } catch (e) {
+          console.warn('facingMode environment failed:', e);
+          lastErr = e;
+        }
+      }
+
+      if (!started) {
+        throw lastErr || new Error('Unable to access camera.');
+      }
+
+      // Re-enumerate cameras in background to populate selector
       Html5Qrcode.getCameras()
         .then((devices) => {
           if (devices && devices.length > 0) {
@@ -210,12 +244,16 @@ export default function QrScannerView({ onReportScam }) {
       console.error('Failed to start camera:', err);
       setIsScanning(false);
       let msg = err.message || 'Unable to access camera.';
-      if (err.name === 'NotAllowedError' || msg.includes('Permission')) {
-        msg = 'Camera permission was denied. Please click the lock/tune icon in your browser address bar, set Camera to "Allow", and try again.';
+      if (err.name === 'NotAllowedError' || msg.includes('Permission') || msg.includes('Permission denied')) {
+        msg = 'Camera permission was blocked. Please click the lock 🔒 or camera icon in your browser address bar, set Camera to "Allow", and refresh.';
+      } else if (err.name === 'NotReadableError' || msg.includes('in use') || msg.includes('Could not start video source')) {
+        msg = 'Camera is already in use by another tab or app (Zoom, Teams, Camera app). Please close other tabs/apps and try again.';
       } else if (err.name === 'NotFoundError' || msg.includes('No camera')) {
-        msg = 'No physical webcam detected on this device. You can use "Take Photo with Camera", "Upload QR Image", or manual input.';
+        msg = 'No physical webcam detected on this device. You can use "Take Photo with Camera" or "Upload QR Image".';
       } else if (msg.includes('secure context') || msg.includes('getUserMedia')) {
-        msg = 'Camera requires a secure context (https or localhost). If opening on mobile over local Wi-Fi, use "Take Photo with Camera" or upload a screenshot.';
+        msg = 'Camera requires HTTPS or localhost. Please ensure you are browsing over a secure connection.';
+      } else {
+        msg = 'Unable to access camera stream. Your webcam might be in use, blocked by browser permissions, or requires a snapshot.';
       }
       setCameraError(msg);
     }
@@ -600,21 +638,76 @@ export default function QrScannerView({ onReportScam }) {
             </ul>
           </div>
 
-          {/* Camera Error Message */}
+          {/* Camera Error Message with Actionable Help */}
           {cameraError && (
             <div style={{
               marginTop: '1.25rem',
-              padding: '1rem 1.25rem',
+              padding: '1.25rem',
               background: 'var(--risk-high-bg)',
               border: '1px solid var(--risk-high-border)',
               borderRadius: 'var(--radius-md)',
               color: 'var(--risk-high-text)',
-              fontSize: '0.85rem',
+              fontSize: '0.86rem',
               textAlign: 'left',
             }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                <AlertCircle size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span style={{ fontWeight: 700 }}>{cameraError}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem', marginBottom: '0.75rem' }}>
+                <AlertCircle size={22} color="var(--risk-high)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.2rem' }}>
+                    {cameraError}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', opacity: 0.9 }}>
+                    {t('cameraAccessTroubleshoot')}
+                  </div>
+                </div>
+              </div>
+
+              <ul style={{ margin: '0 0 1rem 1.5rem', padding: 0, fontSize: '0.82rem', lineHeight: 1.6 }}>
+                <li>{t('cameraStepPermission')}</li>
+                <li>{t('cameraStepInUse')}</li>
+                <li>{t('cameraStepPhoto')}</li>
+              </ul>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => startCamera()}
+                  className="btn-primary"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
+                >
+                  <RefreshCw size={14} />
+                  <span>{t('tryAgainBtn')}</span>
+                </button>
+
+                <label
+                  className="btn-secondary"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.82rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Camera size={14} color="var(--primary-bright)" />
+                  <span>{t('takePhotoCamera')}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                <button
+                  onClick={() => setActiveTab('file')}
+                  className="btn-secondary"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
+                >
+                  <Upload size={14} />
+                  <span>{t('tabUploadImage')}</span>
+                </button>
               </div>
             </div>
           )}

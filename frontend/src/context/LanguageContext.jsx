@@ -84,6 +84,11 @@ const translations = {
     enlargeQrModalTitle: 'Point your phone camera or webcam at this QR code to test instant detection!',
     scanDirectly: 'Scan This Directly',
     close: 'Close',
+    cameraAccessTroubleshoot: 'Camera Troubleshooting & Solutions:',
+    cameraStepPermission: 'Check browser permission: Click the 🔒 lock icon in your address bar and ensure Camera is set to "Allow", then refresh.',
+    cameraStepInUse: 'Close other tabs: If your webcam is open in another tab or app (Zoom, Teams, Camera app), close it and try again.',
+    cameraStepPhoto: 'Use Instant Photo: You can also tap "Take Photo with Camera" or "Upload QR Image" for instant scanning without live video.',
+    tryAgainBtn: 'Try Again',
 
     // Message Checker
     msgTitle: 'Fraud SMS & WhatsApp Message Checker',
@@ -289,6 +294,11 @@ const translations = {
     enlargeQrModalTitle: 'लाइव स्कैन टेस्ट करने के लिए अपने कैमरे को इस क्यूआर कोड के सामने लाएं!',
     scanDirectly: 'इसे सीधे जांचें',
     close: 'बंद करें',
+    cameraAccessTroubleshoot: 'कैमरा समस्या निवारण व उपाय:',
+    cameraStepPermission: 'ब्राउज़र अनुमति जांचें: एड्रेस बार में 🔒 लॉक आइकन पर क्लिक करें और कैमरे को "Allow" करें।',
+    cameraStepInUse: 'अन्य टैब बंद करें: यदि कैमरा किसी अन्य टैब या ऐप (Zoom, Teams) में खुला है, तो उसे बंद करें।',
+    cameraStepPhoto: 'फोटो विकल्प: आप बिना लाइव वीडियो के भी "कैमरे से फोटो खींचें" या "क्यूआर फोटो अपलोड" से स्कैन कर सकते हैं।',
+    tryAgainBtn: 'पुनः प्रयास करें',
 
     // Message Checker
     msgTitle: 'फ्रॉड एसएमएस व वॉट्सऐप संदेश जांचें',
@@ -494,6 +504,11 @@ const translations = {
     enlargeQrModalTitle: 'थेट तपासणीसाठी तुमचा कॅमेरा या क्युआर कोडसमोर धरा!',
     scanDirectly: 'हे थेट तपासा',
     close: 'बंद करा',
+    cameraAccessTroubleshoot: 'कॅमेरा समस्या निवारण व उपाय:',
+    cameraStepPermission: 'ब्राउझर परवानगी तपासा: ॲड्रेस बारमधील 🔒 लॉक चिन्हावर क्लिक करा आणि कॅमेरा "Allow" करा.',
+    cameraStepInUse: 'इतर टॅब बंद करा: कॅमेरा इतर कोणत्याही टॅबमध्ये किंवा ॲपमध्ये (Zoom, Teams) सुरू असल्यास ते बंद करा.',
+    cameraStepPhoto: 'फोटो पर्याय: थेट व्हिडिओशिवाय स्कॅन करण्यासाठी "कॅमेऱ्याने फोटो काढा" किंवा "क्युआर फोटो अपलोड" वापरा.',
+    tryAgainBtn: 'पुन्हा प्रयत्न करा',
 
     // Message Checker
     msgTitle: 'फसवणूक मेसेज व व्हॉट्सॲप तपासक',
